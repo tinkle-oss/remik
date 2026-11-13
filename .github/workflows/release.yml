@@ -14,17 +14,14 @@ concurrency:
   group: release
   cancel-in-progress: false
 jobs:
-  setup-notice:
-    if: github.repository == 'tinkle-oss/remik' && github.ref == 'refs/heads/main' && vars.RELEASE_APP_ID == '' && inputs.existing_tag == ''
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - run: echo '::notice::Releases are disabled. Configure RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY; see .github/TOOLING.md. No GITHUB_TOKEN fallback is used.'
-
   plan:
-    if: github.repository == 'tinkle-oss/remik' && github.ref == 'refs/heads/main' && (vars.RELEASE_APP_ID != '' || inputs.existing_tag != '')
+    if: github.repository == 'tinkle-oss/remik' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
       tag: ${{ steps.resolve.outputs.tag }}
@@ -35,20 +32,11 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
-        if: inputs.existing_tag == ''
-        id: app
-        with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-          permission-issues: write
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         if: inputs.existing_tag == ''
         id: release
         with:
-          token: ${{ steps.app.outputs.token }}
+          token: ${{ github.token }}
           target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

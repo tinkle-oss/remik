@@ -63,7 +63,9 @@ Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for c
 
 Do not manually bump versions or create release tags in ordinary PRs. [Release Please](docs/releases.md) owns version/changelog updates. The one-time initial `Release-As` footer is a maintainer bootstrap step, not a footer to add to every change.
 
-The aggregate required CI status is **CI required**, defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It checks all Rust matrix, tooling, dependency-policy, and Docker smoke/differential/image-scan jobs; a skipped or canceled dependency does not pass. Repository administrators still need to enable branch protection requiring it. Maintainer review and passing checks are required by project policy; this document does not assert that remote protection settings are already configured.
+The aggregate check is named **CI required**, defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It checks all Rust matrix, tooling, dependency-policy, and Docker smoke/differential/image-scan jobs; a skipped or canceled dependency does not pass. Maintainers must manually review changes and passing CI results before merging as project policy, not a GitHub-enforced CI merge gate.
+
+The [remote main policy](.github/TOOLING.md#remote-main-policy) is already applied: PRs are required, with zero required approvals, no bypass actors (including administrators and bots), and no required status checks. **CI required** is only the existing check name, not a branch requirement. For token-created release PRs, follow the [workflow approval guidance](docs/releases.md#administrator-setup) before reviewing CI results.
 
 ## Dependencies and attribution
 
