@@ -72,6 +72,19 @@ class ToolingTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 check(root)
 
+    def test_release_workflow_uses_builtin_token(self):
+        root = Path(__file__).parent.parent
+        release = (root / ".github/workflows/release.yml").read_text()
+        plan = release.split("  plan:\n", 1)[1].split("\n  verify:\n", 1)[0]
+        self.assertIn("permissions:\n  contents: read\n", release)
+        self.assertIn("    if: github.repository == 'tinkle-oss/remik' && github.ref == 'refs/heads/main'\n", plan)
+        self.assertIn("    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n", plan)
+        self.assertIn("          token: ${{ github.token }}\n", plan)
+        self.assertNotIn("RELEASE_APP", release)
+        self.assertNotIn("create-github-app-token", release)
+        self.assertNotIn("setup-notice:", release)
+        self.assertNotIn("secrets.", plan)
+
     def test_workflow_toolchain_and_recovery_overrides(self):
         root = Path(__file__).parent.parent
         ci = (root / ".github/workflows/ci.yml").read_text()

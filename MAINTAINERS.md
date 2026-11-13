@@ -6,7 +6,7 @@ Remik is maintained in [tinkle-oss/remik](https://github.com/tinkle-oss/remik). 
 | --- | --- | --- |
 | [@oscarlaw](https://github.com/oscarlaw) | Maintainer and organization administrator | Technical direction, review/merge decisions, repository access and settings, release approval, security coordination, and conduct enforcement |
 
-No other human maintainer or release bot installation is confirmed here. The [release App configuration](docs/releases.md#administrator-setup) is required setup, not evidence that credentials are installed. [.github/CODEOWNERS](.github/CODEOWNERS) routes review requests and does not itself grant access or enforce branch protection.
+No other human maintainer is listed here. [Releases](docs/releases.md#administrator-setup) use the built-in `GITHUB_TOKEN`, without a separate GitHub App or App credentials. [.github/CODEOWNERS](.github/CODEOWNERS) routes review requests and does not itself grant access or enforce branch protection.
 
 ## Decisions and access
 
@@ -14,7 +14,9 @@ Use [issues](https://github.com/tinkle-oss/remik/issues) for usage obstacles and
 
 Before adding a maintainer or escalating permissions, review their contribution history, judgment on security/compatibility, and willingness to maintain the project. Grant only the permissions needed, require MFA for sensitive access, and update this roster and CODEOWNERS in a reviewed PR. Review and revoke access when responsibilities end; rotate affected secrets. Do not grant organization administration merely to enable code review.
 
-Repository administrators must configure the **CI required** status, branch protection, private vulnerability reporting, and release/package permissions. The [tooling runbook](.github/TOOLING.md#release-setup-and-bootstrap-maintainer-action-required) and [security policy](SECURITY.md) describe these actions. A policy file is not proof that remote controls are enabled.
+The [PR-only main ruleset](.github/TOOLING.md#remote-main-policy) is already applied, with zero required approvals, no bypass actors, and no required status checks. Maintainers must manually review changes and passing **CI required** results before merging; the check name is not a GitHub-enforced merge gate. Private vulnerability reporting is enabled, as recorded in [SECURITY.md](SECURITY.md).
+
+The remaining release setup is Actions PR permission and package access. Organization policy blocked the repository PR-permission setting with HTTP `409`; the current CLI session lacks `admin:org`, so an organization owner may need to change organization settings. This blocker is not confirmed resolved; follow the [tooling runbook](.github/TOOLING.md#release-setup-and-bootstrap-maintainer-action-required).
 
 ## Contact and availability
 

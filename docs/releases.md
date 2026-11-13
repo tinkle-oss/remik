@@ -1,6 +1,6 @@
 # Releases
 
-The source version is `0.1.0-rc.1`, an experimental prerelease. A version string in [`Cargo.toml`](../Cargo.toml) does not mean a GitHub release or GHCR image has been published. Publication requires administrator setup and successful workflow evidence; runtime credentials and remote repository settings were not available for verification during documentation work.
+The source version is `0.1.0-rc.1`, an experimental prerelease. No GitHub release exists yet; a version string in [`Cargo.toml`](../Cargo.toml) does not mean a GHCR image has been published. Publication still requires Actions permission setup and successful workflow evidence.
 
 ## Version and distribution policy
 
@@ -20,25 +20,25 @@ Use the local `remik:local` build in the [quick start](../README.md#run-with-doc
 
 ## Administrator setup
 
-The canonical setup and recovery runbook is [`.github/TOOLING.md`](../.github/TOOLING.md#release-setup-and-bootstrap-maintainer-action-required). The following summarizes its prerequisites, without claiming they are already configured:
+The canonical setup and recovery runbook is [`.github/TOOLING.md`](../.github/TOOLING.md#release-setup-and-bootstrap-maintainer-action-required). Release Please uses the built-in `GITHUB_TOKEN`; no GitHub App or App credentials are required.
 
-1. Create and install a GitHub App on `tinkle-oss/remik` only, with repository **Contents, Pull requests, and Issues: read/write**. Set Actions variable `RELEASE_APP_ID` and Actions secret `RELEASE_APP_PRIVATE_KEY`. Never put the private key in the repository. The workflow mints a short-lived installation token with those explicit permissions.
-2. Allow Actions to create PRs, protect `main`, and require the exact status **CI required** from [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Confirm the repository's Actions token can publish GHCR packages and has access to the package.
+1. Enable repository **Settings > Actions > General > Workflow permissions > Allow GitHub Actions to create and approve pull requests**. Organization policy blocked the repository attempt with HTTP `409`, and the current CLI session lacks `admin:org`; an organization owner may need to adjust organization settings first. This blocker is not confirmed resolved.
+2. Confirm the repository's Actions token can publish GHCR packages and has access to the package. The [PR-only main ruleset](../.github/TOOLING.md#remote-main-policy) is already applied, with zero required approvals and no required status checks.
 3. Keep the release manifest empty for bootstrap. The initial Conventional Commit on main must include this footer **once**:
 
    ```text
    Release-As: 0.1.0-rc.1
    ```
 
-4. Let the official `googleapis/release-please-action` v4 create the release PR. Review its version changes and changelog, and merge only after required CI passes. It updates `Cargo.toml`, root `Cargo.lock`, fuzz lock package version via its TOML updater, release manifest, and `CHANGELOG.md`.
+4. Let the official pinned `googleapis/release-please-action` v4 create the release PR. When its CI runs await approval, select **Approve workflows to run** in the PR merge box. Review its version changes, changelog, and passing CI results before merging; CI review is project policy, not a GitHub-enforced merge gate. It updates `Cargo.toml`, root `Cargo.lock`, fuzz lock package version via its TOML updater, release manifest, and `CHANGELOG.md`.
 
-Do not seed the manifest with rc.1 as though it shipped, rely on an `initial-version` override for the Rust strategy, or leave a permanent `release-as` setting. There is deliberately no `GITHUB_TOKEN` fallback for Release Please: a bot-created PR from that token would not trigger the intended downstream CI. Without setup, the workflow emits a setup notice rather than publishing. This checkout does not establish that an App or its credentials exist.
+Do not seed the manifest with rc.1 as though it shipped, rely on an `initial-version` override for the Rust strategy, or leave a permanent `release-as` setting. Missing repository or organization permissions must fail the actual release action rather than produce a successful setup-only notice. See the [runbook's GitHub event guidance](../.github/TOOLING.md#release-setup-and-bootstrap-maintainer-action-required) for token-created PR workflow approval.
 
 ## Publication flow
 
-[`.github/workflows/release.yml`](../.github/workflows/release.yml) runs on trusted main, with planning, verification, native archives, asset upload, and image publication in one workflow. It does not depend on a tag-event cascade. The App token creates release PRs/releases; publication jobs use narrowly scoped `GITHUB_TOKEN` permissions (`contents: write` for release assets, `packages: write` for images).
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) runs only on trusted main pushes or manual runs on main in `tinkle-oss/remik`, with planning, verification, native archives, asset upload, and image publication in one workflow. `GITHUB_TOKEN`-created tag/release events do not trigger downstream workflows, so publication stays in the same workflow. Keep the repository default token read-only and the workflow default at `contents: read`; only `plan` receives `contents: write`, `pull-requests: write`, and `issues: write` for Release Please. Publication job permissions remain unchanged: `contents: write` for release assets, and `contents: read` plus `packages: write` for images.
 
-[`scripts/resolve-release.py`](../scripts/resolve-release.py) resolves the existing release tag to an exact commit SHA, checks GitHub draft/prerelease state, and requires the commit to be in main's history. Subsequent jobs check out that SHA, not moving main. Full CI runs again against it. [`scripts/check-release.py`](../scripts/check-release.py) checks tag, Cargo version, both lockfiles, manifest, and release policy before publishing.
+[`scripts/resolve-release.py`](../scripts/resolve-release.py) resolves the existing release tag to an exact commit SHA, checks GitHub draft/prerelease state, and requires the commit to be in main's history. Subsequent jobs check out that SHA, not moving main. Full CI runs again against it and must pass within the release workflow before publication, regardless of the lack of a CI merge gate. [`scripts/check-release.py`](../scripts/check-release.py) checks tag, Cargo version, both lockfiles, manifest, and release policy before publishing.
 
 [`scripts/package-release.py`](../scripts/package-release.py) builds archives named `remik-<version>-<rust-target>.tar.gz`, each containing the binary, `LICENSE`, and `THIRD_PARTY_NOTICES.txt`. The four Rust targets are `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin`, and `aarch64-apple-darwin`. Linux binaries need compatible glibc; these are not static musl builds. [`scripts/upload-assets.py`](../scripts/upload-assets.py) attaches the four archives and `SHA256SUMS`.
 
