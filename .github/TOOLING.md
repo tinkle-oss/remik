@@ -4,7 +4,7 @@ Remik is a Rust in-memory key-value server. No live Redis instance
 is needed by `cargo test`; only the Docker differential/benchmark tooling starts
 a disposable, digest-pinned Redis reference. Nothing publishes to crates.io.
 
-## Local checks and required CI
+## Local checks and CI
 
 Prerequisites: the `rust-toolchain.toml` toolchain (Rust **1.99.1**, rustfmt,
 Clippy), Python **3.11+**, Docker Engine/Desktop with Compose v2 and Buildx,
@@ -39,15 +39,27 @@ cargo deny --manifest-path fuzz/Cargo.toml --locked check advisories licenses so
 # Install Trivy 0.76.2 using its verified upstream release package.
 ```
 
-Configure branch protection to require **CI required** from `ci.yml`. It fails if
+The aggregate check in `.github/workflows/ci.yml` is named **CI required**; the
+name does not make it a GitHub-required merge gate. It fails if
 any Rust matrix, tooling, dependency-policy, image scan, smoke, or differential
-job fails, is canceled, or is skipped. No path filters hide required checks.
+job fails, is canceled, or is skipped. No path filters hide checks. Maintainers
+must manually review passing CI results before merging as project policy.
 PR jobs have only `contents: read`, no secrets, no `pull_request_target`, and do
 not publish images. Weekly CI refreshes security evidence even without commits.
 Advisory/Trivy databases intentionally refresh: scanner versions and dependencies
 are pinned, but vulnerability results can change. No blanket advisory ignores;
 new license requirements require review. The NCSA exception is only for the
 libFuzzer runtime in the separate unpublished fuzz workspace.
+
+## Remote main policy
+
+Exactly one active branch ruleset is already applied:
+[27232283](https://github.com/tinkle-oss/remik/rules/27232283), targeting
+`refs/heads/main`. Its only rule is `pull_request`, with zero required approvals,
+no bypass actors (including administrators and bots), all optional review and
+conversation settings off, and no required status checks. Classic branch
+protection was removed (`branchProtectionRules.totalCount` is `0`). GitHub
+requires a PR but does not enforce a CI merge gate; CI review is manual.
 
 ## Docker and Compose
 
@@ -185,17 +197,20 @@ and host metadata before sharing artifacts.
 
 ## Release setup and bootstrap (maintainer action required)
 
-No initial edge image is pushed. The workflow does nothing except a visible
-notice until configured; there is deliberately **no GITHUB_TOKEN fallback** for
-Release Please, because bot-created PRs would otherwise not trigger CI.
+No initial edge image is pushed, and no GitHub release exists yet. Release Please
+uses the built-in **GITHUB_TOKEN**; no GitHub App, `RELEASE_APP_ID`, or
+`RELEASE_APP_PRIVATE_KEY` is required. Keep the repository default token read-only
+and the workflow default at `contents: read`; only the `plan` job receives
+`contents: write`, `pull-requests: write`, and `issues: write`.
 
-1. Create/install a GitHub App on **tinkle-oss/remik only**, with repository
-   **Contents, Pull requests and Issues: read/write** (metadata read is implied).
-   Configure Actions variable **RELEASE_APP_ID** and secret
-   **RELEASE_APP_PRIVATE_KEY**. Never commit the private key. App permissions
-   are narrowed explicitly when minting its short-lived installation token.
-2. Allow Actions to create pull requests and configure the required CI gate.
-   Ensure the repository Actions token can write GHCR packages and the package
+1. In repository **Settings > Actions > General > Workflow permissions**, enable
+   **Allow GitHub Actions to create and approve pull requests**. The repository
+   attempt returned HTTP **409** because organization policy blocks enabling it.
+   The current CLI session lacks `admin:org`, so an organization owner may need
+   to change organization Actions settings first. This blocker is not confirmed
+   resolved; missing repository/organization permission must fail the actual
+   release action, not produce a successful setup-only notice.
+2. Ensure the repository Actions token can write GHCR packages and the package
    grants this repository Actions access. Publication jobs use the scoped
    **GITHUB_TOKEN** (`packages: write` for images, `contents: write` for assets),
    not a registry password or PAT. New GHCR packages may initially be private;
@@ -210,17 +225,26 @@ Release Please, because bot-created PRs would otherwise not trigger CI.
    Do not seed the manifest with rc.1 as if it had already shipped. Rust's
    `initialReleaseVersion()` returns 0.1.0, so `initial-version` is not a reliable
    bootstrap override. Do not leave a permanent `release-as` configuration.
-4. Review/merge the generated release PR only after CI. It updates Cargo.toml,
-   root/fuzz lock versions, manifest and CHANGELOG. With the prerelease strategy,
+4. Review the generated release PR and passing CI results before merging. It
+   updates Cargo.toml, root/fuzz lock versions, manifest, and CHANGELOG. With the prerelease strategy,
    ordinary fixes/features after **0.1.0-rc.1** increment the rc counter.
+
+GitHub's [workflow-trigger documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)
+states that `GITHUB_TOKEN`-generated PR `opened`, `synchronize`, and `reopened`
+events create CI runs in an **approval-required** state. A maintainer with write
+access selects **Approve workflows to run** in the PR merge box, then reviews the
+results before merging. Token-created tag/release events do not trigger new
+workflows, so publication remains in the same workflow.
 
 Release Please is the official **googleapis/release-please-action v4**, pinned
 to **5c625bfb5d1ff62eadeeb3772007f7f66fdcf071** (verified via `gh api`). It runs
-only on trusted main. Downstream verification, four native archives and Docker
-publication are in the **same workflow**, not a tag/release event cascade.
-Every job checks out the resolved **exact release SHA**, not moving main.
-The tag must match Cargo, both lockfiles, manifest and GitHub prerelease state,
-and point to a commit in main's history. Full CI must pass before publication.
+only on trusted main pushes or manual runs on main in `tinkle-oss/remik`.
+Downstream verification, four native archives, and Docker publication are in the
+**same workflow**, not a tag/release event cascade. Every downstream checkout
+uses the resolved **exact release SHA**, not moving main.
+The tag must match Cargo, both lockfiles, manifest, and GitHub prerelease state,
+and point to a commit in main's history. Full CI must pass against that SHA within
+the release workflow before publication, independent of the merge policy.
 
 Native archives: Linux GNU amd64/arm64 and macOS Intel/Apple Silicon, each built
 and tested on native runners, with LICENSE, third-party notices and SHA256SUMS.

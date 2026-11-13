@@ -14,9 +14,9 @@ Before making broader stability or performance claims, collect evidence for:
 - Repeatable [benchmark results](benchmarks.md) with raw outputs and host metadata, plus RSS and transient-memory measurements under client/output pressure.
 - Client startup compatibility using the supported RESP2 contract, without silently accepting unsupported commands/options.
 - A completed [release bootstrap](releases.md), native and multiarch artifact verification, and reviewed dependency/license notices.
-- Administrator-enabled private reporting, branch protection, scoped release credentials, and an explicit review of the [OSPS Baseline v2026.08.28](https://baseline.openssf.org/versions/2026-08-28.html) gaps. No compliance claim is made.
+- Resolution of the remaining [Actions PR-permission blocker](releases.md#administrator-setup), validation of GHCR access, and an explicit review of the [OSPS Baseline v2026.08.28](https://baseline.openssf.org/versions/2026-08-28.html) gaps. No compliance claim is made.
 
-These priorities are acceptance topics, not evidence that the checks have already passed or settings have been enabled.
+Private reporting is enabled, and the [PR-only main ruleset](../.github/TOOLING.md#remote-main-policy) is already applied with zero required PR approvals and no CI merge gate. These priorities remain acceptance topics, not evidence of a successful release or resolved organization Actions policy.
 
 ## Proposals, not implemented features
 
