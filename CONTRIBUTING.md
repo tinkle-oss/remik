@@ -4,7 +4,13 @@ Remik accepts bug reports, documentation improvements, tests, and scoped code ch
 
 ## Discuss the change
 
-Search existing issues first. For a bug, include the Remik version or commit, OS/architecture, redacted flags, client/protocol version, a minimal command sequence, and expected versus actual results. Include errors and resource settings, but never passwords, secret files, or private production data. Security reports belong in the [private reporting process](SECURITY.md#report-a-vulnerability).
+Search existing issues first, then choose the matching form:
+
+- [Bug report](https://github.com/tinkle-oss/remik/issues/new?template=bug_report.yml): include the version, environment, minimal reproduction, and separate expected and actual results.
+- [Feature request](https://github.com/tinkle-oss/remik/issues/new?template=proposal.yml): describe the problem and proposed behavior; keep small requests brief.
+- [Usage question](https://github.com/tinkle-oss/remik/issues/new?template=question.yml): ask about configuration or documented behavior without proposing an API.
+
+Keep public examples and diagnostics redacted; never include passwords, secret-file contents, private keys, or private data values. Send vulnerabilities through [private reporting](https://github.com/tinkle-oss/remik/security/advisories/new); see [the security policy](SECURITY.md#report-a-vulnerability) for details.
 
 Propose major changes in an issue before implementation. Explain the use case, observable contract, compatibility impact, failure/resource behavior, alternatives, and how it will be tested. New command families, persistence, replication, authentication changes, and concurrency redesigns need this discussion. The [roadmap](docs/roadmap.md) contains evaluation topics, not preapproved features.
 
@@ -57,7 +63,7 @@ For tooling/image changes, run the corresponding checks in [the tooling runbook]
 
 ## Open a pull request
 
-Use the repository's [PR template](.github/PULL_REQUEST_TEMPLATE.md). Describe the reason, changed behavior, tests actually run, and any checks you could not run. Link the issue/proposal and call out compatibility, security, dependency/license, or memory-accounting changes. Keep generated benchmark output, binaries, and secrets out of the diff.
+Use the repository's [PR template](.github/PULL_REQUEST_TEMPLATE.md) to summarize the change, link related issues, describe behavior and risk, and record checks actually run or left unrun. Explain items that do not apply; keep generated benchmark output, binaries, and secrets out of the diff. The template is editable Markdown guidance, not an automated merge gate. Issue form and PR template changes must merge into the default branch before GitHub makes them available.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for commit messages and the final squash title; this is required for Release Please to classify changes. Examples are `fix(protocol): reject oversized bulk headers` and `docs: clarify TTL rounding`. Use `feat:`, `fix:`, `docs:`, `test:`, `ci:`, or another appropriate type; identify breaking changes with `!` or a `BREAKING CHANGE:` footer. This is a contribution requirement, not a claim that CI currently lints titles.
 

@@ -1,5 +1,5 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
-  - name: Security reporting policy
-    url: https://github.com/tinkle-oss/remik/blob/main/SECURITY.md
-    about: Read the private reporting instructions and setup caveat before sharing vulnerability details.
+  - name: Report a vulnerability privately
+    url: https://github.com/tinkle-oss/remik/security/advisories/new
+    about: Send vulnerability details to maintainers privately, not in a public issue.

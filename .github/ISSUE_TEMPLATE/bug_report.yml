@@ -1,25 +1,35 @@
 name: Bug report
 description: Report a reproducible non-security defect in Remik.
 title: "bug: "
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Search existing issues first. Do not disclose vulnerabilities, passwords, or private data here.
-        For security concerns, read https://github.com/tinkle-oss/remik/blob/main/SECURITY.md.
-        Remik is experimental and memory-only; restart data loss is expected.
+        Report vulnerabilities [privately](https://github.com/tinkle-oss/remik/security/advisories/new), not in this public issue.
+        Never post passwords, secret-file contents, private keys, or private data values.
+        Remik is experimental and memory-only; restart data loss is expected. Not all Redis features are supported; check [implemented compatibility](https://github.com/tinkle-oss/remik/blob/main/docs/compatibility.md).
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
   - type: input
     id: version
     attributes:
       label: Version or commit
-      description: Include `remik --version` and the commit if built from a checkout.
+      description: Include `remik --version`, the commit if built from source, or the exact image tag and digest if using Docker.
+      placeholder: Version output, commit SHA, or Docker image reference
     validations:
       required: true
   - type: textarea
     id: environment
     attributes:
       label: Environment and redacted configuration
-      description: OS, architecture, native or Docker, client/version, RESP mode, and relevant limits. Never include passwords or secret-file contents.
+      description: Include OS, architecture, native or Docker, client/version, protocol mode, and relevant limits. Redact sensitive configuration.
+      placeholder: Describe the runtime and relevant startup flags or environment settings.
     validations:
       required: true
   - type: textarea
@@ -27,17 +37,33 @@ body:
     attributes:
       label: Minimal reproduction
       description: Exact commands or encoded requests, initial state, and steps. Remove sensitive keys and values.
+      placeholder: Describe the initial state, steps to trigger the problem, and how often it happens using synthetic data.
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected and actual behavior
-      description: Include the complete error and whether the connection stayed open. For compatibility reports, identify the documented supported option.
+      label: Expected behavior
+      description: For compatibility reports, identify the documented command or option you expected to work.
+      placeholder: What should happen after the reproduction steps?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the redacted error or response and whether the connection stayed open.
+      placeholder: What happened instead, including any crash or disconnect?
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
-      label: Additional evidence
-      description: Redacted logs, relevant INFO sections, regression range, or a proposed test.
+      label: Redacted logs (optional)
+      description: Include only relevant diagnostic lines, with credentials and private data removed. Do not attach memory dumps or secret files.
+      render: text
+  - type: input
+    id: regression
+    attributes:
+      label: Regression range (optional)
+      description: If known, identify the last working and first failing versions or commits.

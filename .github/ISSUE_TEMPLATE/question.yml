@@ -1,0 +1,48 @@
+name: Usage question
+description: Ask about configuration, documented behavior, or using the supported subset.
+title: "question: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report vulnerabilities [privately](https://github.com/tinkle-oss/remik/security/advisories/new), not in this public issue.
+        Never post passwords, secret-file contents, private keys, or private data values.
+        Remik is memory-only and does not implement all Redis features; check [implemented compatibility](https://github.com/tinkle-oss/remik/blob/main/docs/compatibility.md) and [operations](https://github.com/tinkle-oss/remik/blob/main/docs/operations.md).
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched existing issues for this question.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Include `remik --version` or a commit. For a documentation-only question, you may write "not applicable" and link the page.
+      placeholder: Version, commit SHA, or not applicable with a documentation link
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and redacted configuration
+      description: Include relevant OS, architecture, native or Docker, client/version, protocol mode, and settings. Write "not applicable" if no runtime is involved.
+      placeholder: Describe the relevant runtime and settings, or explain why they do not apply.
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Describe what you want to accomplish and which behavior or instruction is unclear. No proposed API is needed.
+      placeholder: What are you trying to do, and where are you stuck?
+    validations:
+      required: true
+  - type: textarea
+    id: attempts
+    attributes:
+      label: Commands tried and results (optional)
+      description: Include a minimal redacted example, the response, and any documentation you already tried. Use synthetic keys and values.
+      render: text
