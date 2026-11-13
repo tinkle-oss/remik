@@ -1,0 +1,12 @@
+# Allowlist: never send credentials, .git, .agents, fuzz corpora, or host binaries.
+**
+!Dockerfile
+!Cargo.toml
+!Cargo.lock
+!src/
+!src/**
+!benches/
+!benches/**
+!LICENSE
+!target/
+!target/THIRD_PARTY_NOTICES.txt

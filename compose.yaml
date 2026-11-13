@@ -1,0 +1,17 @@
+services:
+  remik:
+    image: remik:local
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:6379:6379"
+    environment:
+      REMIK_BIND: 0.0.0.0:6379
+    command: ["--max-memory", "67108864"]
+    cpus: 1.0
+    mem_limit: 256m
+    pids_limit: 128
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 10s

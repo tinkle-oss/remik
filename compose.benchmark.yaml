@@ -1,0 +1,41 @@
+# Standalone file, not an override. Only start one server at a time.
+name: remik-benchmark
+x-server: &server
+  cpus: 1.0
+  mem_limit: 256m
+  pids_limit: 128
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  stop_grace_period: 10s
+services:
+  remik:
+    <<: *server
+    image: remik:benchmark
+    build:
+      context: .
+    command: ["--bind", "0.0.0.0:6379", "--max-memory", "67108864", "--max-clients", "128"]
+    ports: ["127.0.0.1:16379:6379"]
+  redis:
+    <<: *server
+    image: redis:8.10.3@sha256:1f88291b4c57bdf249f02eb085a8669889b2d2954e91d4de5118a5da6b78dd53
+    user: "999:999"
+    working_dir: /tmp
+    command: ["redis-server", "--bind", "0.0.0.0", "--protected-mode", "no", "--save", "", "--appendonly", "no", "--maxmemory", "67108864", "--maxmemory-policy", "noeviction", "--maxclients", "128", "--io-threads", "1"]
+    ports: ["127.0.0.1:16380:6379"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  memtier:
+    image: redislabs/memtier_benchmark:2.6.1@sha256:41849040f6ea0b335c31ae532b1488ce47ea6e8c48a086d661f3d6953d3b599d
+    profiles: [tools]
+    cpus: 2.0
+    mem_limit: 256m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    user: "${BENCH_UID:-1000}:${BENCH_GID:-1000}"
+    volumes:
+      - ./benchmark-results:/results

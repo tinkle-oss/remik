@@ -1,0 +1,35 @@
+[package]
+name = "remik"
+version = "0.1.0-rc.1"
+edition = "2024"
+rust-version = "1.99"
+description = "A small, memory-only Redis-compatible key-value server"
+license = "Apache-2.0"
+repository = "https://github.com/tinkle-oss/remik"
+readme = "README.md"
+publish = false
+
+[dependencies]
+bytes = "1"
+clap = { version = "4", features = ["derive", "env"] }
+subtle = "2"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
+proptest = "1"
+redis = { version = "1.8", default-features = false, features = ["tokio-comp"] }
+tokio = { version = "1", features = ["test-util"] }
+
+[[bench]]
+name = "core"
+harness = false
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

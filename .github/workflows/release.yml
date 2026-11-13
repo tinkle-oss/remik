@@ -1,0 +1,192 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      existing_tag:
+        description: 'Recovery only: existing GitHub release tag (for example v0.1.0-rc.1); blank runs release-please'
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  setup-notice:
+    if: github.repository == 'tinkle-oss/remik' && github.ref == 'refs/heads/main' && vars.RELEASE_APP_ID == '' && inputs.existing_tag == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: echo '::notice::Releases are disabled. Configure RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY; see .github/TOOLING.md. No GITHUB_TOKEN fallback is used.'
+
+  plan:
+    if: github.repository == 'tinkle-oss/remik' && github.ref == 'refs/heads/main' && (vars.RELEASE_APP_ID != '' || inputs.existing_tag != '')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        if: inputs.existing_tag == ''
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        if: inputs.existing_tag == ''
+        id: release
+        with:
+          token: ${{ steps.app.outputs.token }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      - name: Resolve the existing tag, never the moving main HEAD
+        if: inputs.existing_tag != '' || steps.release.outputs.release_created == 'true'
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.existing_tag || steps.release.outputs.tag_name }}
+          EXPECTED_SHA: ${{ steps.release.outputs.sha }}
+        run: python3 scripts/resolve-release.py "$TAG" --expected-sha "$EXPECTED_SHA"
+
+  verify:
+    needs: plan
+    if: needs.plan.outputs.sha != ''
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.plan.outputs.sha }}
+    permissions:
+      contents: read
+
+  binaries:
+    needs: [plan, verify]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, target: x86_64-unknown-linux-gnu}
+          - {os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu}
+          - {os: macos-15, target: aarch64-apple-darwin}
+          - {os: macos-15-intel, target: x86_64-apple-darwin}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: 1.99.1
+      - name: Validate release and compile natively
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          python3 scripts/check-release.py --tag "$TAG"
+          cargo test --locked
+          cargo build --locked --release --bin remik
+          python3 scripts/notices.py
+          python3 scripts/package-release.py '${{ matrix.target }}' "$TAG"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  assets:
+    needs: [plan, binaries]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: python3 scripts/upload-assets.py "$TAG"
+
+  image:
+    needs: [plan, verify]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: 1.99.1
+      - name: Validate tag and prepare notices for both Linux platforms
+        id: tags
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+          RECOVERY: ${{ inputs.existing_tag != '' }}
+        run: |
+          tag_args=()
+          if [[ "$RECOVERY" == 'true' ]]; then tag_args+=(--exact-only); fi
+          {
+            echo 'tags<<EOF'
+            python3 scripts/check-release.py --tag "$TAG" "${tag_args[@]}"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+          python3 scripts/notices.py --target x86_64-unknown-linux-gnu --output target/notices-amd64.txt
+          python3 scripts/notices.py --target aarch64-unknown-linux-gnu --output target/notices-arm64.txt
+          cat target/notices-amd64.txt target/notices-arm64.txt > target/THIRD_PARTY_NOTICES.txt
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          image: tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: arm64
+          cache-image: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          version: v0.39.0
+          driver-opts: image=moby/buildkit:v0.35.0@sha256:aa632b921ef07411d2cb77292cd34213d4f7b384001d6fceef1e1f25bf9752bb
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          REVISION: ${{ needs.plan.outputs.sha }}
+        run: python3 scripts/image-state.py "$VERSION" "$REVISION"
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        if: steps.state.outputs.publish == 'true'
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.plan.outputs.version }}
+            REVISION=${{ needs.plan.outputs.sha }}
+          attests: type=sbom,generator=docker/buildkit-syft-scanner:stable-1@sha256:873a7458c3c8ac8e32c7b796c10e1600b07b963d2aa000a72a2d97aaaa2d6315
+          provenance: mode=max

@@ -1,0 +1,139 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 2 * * 1'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event_name }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }}, ${{ matrix.toolchain }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, toolchain: 1.99.1, full: true}
+          - {os: macos-15, toolchain: 1.99.1, full: true}
+          - {os: ubuntu-24.04, toolchain: 1.99.0, full: false}
+          - {os: ubuntu-24.04, toolchain: stable, full: false}
+    runs-on: ${{ matrix.os }}
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy,rustfmt
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ matrix.toolchain }}-${{ hashFiles('Cargo.lock') }}
+      - run: cargo fmt --all -- --check
+        if: matrix.full
+      - run: cargo fmt --manifest-path fuzz/Cargo.toml -- --check
+        if: matrix.full
+      - run: cargo clippy --locked --all-targets -- -D warnings
+        if: matrix.full
+      - run: cargo test --locked
+      - run: cargo doc --locked --no-deps
+        if: matrix.full
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - run: cargo bench --locked --no-run
+        if: matrix.full
+      - run: cargo bench --locked --bench core -- --test
+        if: matrix.full
+      - run: git diff --exit-code -- Cargo.toml Cargo.lock
+
+  tooling:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - run: python3 scripts/test-tooling.py
+      - run: python3 scripts/check-docs.py
+      - run: python3 scripts/check-release.py
+      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - run: shellcheck scripts/*.sh
+      - run: docker compose config --quiet && docker compose -f compose.benchmark.yaml config --quiet
+
+  security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: 1.99.1
+      - run: cargo install cargo-deny --locked --version 0.20.2
+      - run: cargo deny --locked check advisories licenses sources bans
+      - run: cargo deny --manifest-path fuzz/Cargo.toml --locked check advisories licenses sources bans
+
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: 1.99.1
+      - run: python3 scripts/notices.py --target x86_64-unknown-linux-gnu
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          version: v0.39.0
+          driver-opts: image=moby/buildkit:v0.35.0@sha256:aa632b921ef07411d2cb77292cd34213d4f7b384001d6fceef1e1f25bf9752bb
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          load: true
+          tags: remik:ci
+      - run: python3 scripts/docker-smoke.py remik:ci
+      - run: cargo build --locked --bin remik && python3 scripts/differential.py
+      - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.76.2
+          cache: false
+      - name: Gate fixable HIGH/CRITICAL image findings
+        run: trivy image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 remik:ci
+
+  required:
+    name: CI required
+    if: always()
+    needs: [rust, tooling, security, docker]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: All gates passed (including matrix jobs)
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 -c 'import json, os; assert all(j["result"] == "success" for j in json.loads(os.environ["RESULTS"]).values())'

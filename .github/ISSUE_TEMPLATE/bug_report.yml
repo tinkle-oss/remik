@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible non-security defect in Remik.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Do not disclose vulnerabilities, passwords, or private data here.
+        For security concerns, read https://github.com/tinkle-oss/remik/blob/main/SECURITY.md.
+        Remik is experimental and memory-only; restart data loss is expected.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Include `remik --version` and the commit if built from a checkout.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and redacted configuration
+      description: OS, architecture, native or Docker, client/version, RESP mode, and relevant limits. Never include passwords or secret-file contents.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Exact commands or encoded requests, initial state, and steps. Remove sensitive keys and values.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+      description: Include the complete error and whether the connection stayed open. For compatibility reports, identify the documented supported option.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional evidence
+      description: Redacted logs, relevant INFO sections, regression range, or a proposed test.

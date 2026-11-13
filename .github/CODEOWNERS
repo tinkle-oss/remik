@@ -1,0 +1,3 @@
+# Review routing only. Repository rules must separately require owner review.
+# Known maintainer; see MAINTAINERS.md for authority and access policy.
+* @oscarlaw

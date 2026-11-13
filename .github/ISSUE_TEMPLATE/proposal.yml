@@ -1,0 +1,34 @@
+name: Proposal or usage question
+description: Discuss a scoped change or an obstacle using the supported subset.
+title: "proposal: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read CONTRIBUTING.md, docs/compatibility.md, and docs/roadmap.md first.
+        Studying a Redis feature does not commit Remik to implementing it.
+        Do not put security vulnerability details in a public proposal.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use case or question
+      description: What are you trying to do, and what is the obstacle? Include the version for usage questions.
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed observable contract
+      description: For changes, describe syntax, results, errors, compatibility, and explicit non-goals. For questions, include a minimal redacted example.
+    validations:
+      required: true
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Costs, alternatives, and risks
+      description: Consider memory bounds, latency, security, failure/restart behavior, and maintenance. Explain alternatives considered.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: Regression/negative tests, reference-server checks, and benchmark evidence needed. Do not claim unmeasured performance.

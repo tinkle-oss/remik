@@ -1,0 +1,36 @@
+name: Fuzz
+on:
+  schedule:
+    - cron: '41 3 * * 3'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  decode:
+    if: github.repository == 'tinkle-oss/remik' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    env:
+      RUSTUP_TOOLCHAIN: nightly-2026-11-12
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: nightly-2026-11-12
+      - run: cargo install cargo-fuzz --locked --version 0.13.2
+      - name: Ensure separate workspace lockfile is current
+        run: cargo metadata --manifest-path fuzz/Cargo.toml --locked --format-version 1 > /dev/null
+      - run: python3 fuzz/seed-corpus.py
+      - run: cargo fuzz build decode
+      - run: cargo fuzz run decode -- -max_total_time=300 -max_len=65536 -rss_limit_mb=512 -timeout=5
+      - run: git diff --exit-code -- Cargo.lock fuzz/Cargo.lock
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: fuzz-decode-${{ github.sha }}
+          path: |
+            fuzz/artifacts
+            fuzz/corpus
+          retention-days: 14
