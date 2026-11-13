@@ -1,34 +1,44 @@
-name: Proposal or usage question
-description: Discuss a scoped change or an obstacle using the supported subset.
-title: "proposal: "
+name: Feature request
+description: Propose a scoped improvement and describe its observable behavior.
+title: "feature: "
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Read CONTRIBUTING.md, docs/compatibility.md, and docs/roadmap.md first.
-        Studying a Redis feature does not commit Remik to implementing it.
-        Do not put security vulnerability details in a public proposal.
+        Report vulnerabilities [privately](https://github.com/tinkle-oss/remik/security/advisories/new), not in this public issue.
+        Never post passwords, secret-file contents, private keys, or private data values.
+        Remik is memory-only and does not implement all Redis features; check [implemented compatibility](https://github.com/tinkle-oss/remik/blob/main/docs/compatibility.md). A request is not a commitment to implement a feature.
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched existing issues for this improvement.
+          required: true
   - type: textarea
     id: problem
     attributes:
-      label: Use case or question
-      description: What are you trying to do, and what is the obstacle? Include the version for usage questions.
+      label: Problem or use case
+      description: What are you trying to do, and what is missing or difficult?
+      placeholder: Describe the problem and who encounters it.
     validations:
       required: true
   - type: textarea
     id: contract
     attributes:
-      label: Proposed observable contract
-      description: For changes, describe syntax, results, errors, compatibility, and explicit non-goals. For questions, include a minimal redacted example.
+      label: Proposed behavior
+      description: Describe the intended behavior, including syntax, results, or errors where relevant. A short explanation is enough for a small change.
+      placeholder: What should users be able to do, and what should remain unchanged?
     validations:
       required: true
   - type: textarea
     id: tradeoffs
     attributes:
-      label: Costs, alternatives, and risks
-      description: Consider memory bounds, latency, security, failure/restart behavior, and maintenance. Explain alternatives considered.
+      label: Alternatives, costs, and risks (optional)
+      description: Note workarounds or alternatives and any compatibility, memory, latency, security, or maintenance concerns.
   - type: textarea
     id: validation
     attributes:
-      label: Validation plan
-      description: Regression/negative tests, reference-server checks, and benchmark evidence needed. Do not claim unmeasured performance.
+      label: Validation ideas (optional)
+      description: Suggest tests or evidence that would demonstrate the improvement. Performance claims need measurements.
